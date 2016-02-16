@@ -353,6 +353,3 @@ begin
     wait(WaitPerLoop);
   end;
 end;
-
-procedure waitInvStopChange(MaxTime: Integer); Forward;
-

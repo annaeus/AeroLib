@@ -430,7 +430,7 @@ begin
   result := interactSlot(slot, action);
 end;
 
-procedure waitInvCountChange(MaxTime : Integer);
+procedure waitInvStopChange(MaxTime: Integer);
 var
   T        : Timer;
   tmpCount : Integer;
