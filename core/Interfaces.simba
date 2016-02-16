@@ -13,7 +13,7 @@ type TInterface = record
 end;
 
 var
-  Interfaces: Array [0..9] of TInterface;
+  Interfaces: Array [0..15] of TInterface;
 
 {
 ~To-add~
@@ -32,6 +32,12 @@ const
   DUELSCREEN      = 7;
   DUELCSCREEN     = 8;
   TELEOTHERSCREEN = 9;
+  GEMAINSCREEN    = 10;
+  GEOFFERSCREEN   = 11;
+  GECOLLECTSCREEN = 12;
+  JEWELLERYSCREEN = 13;
+  TARGETSCREEN    = 14;
+  TANNINGSCREEN   = 15;
 
 procedure setupInterfaces();
 begin
@@ -40,8 +46,8 @@ begin
     FontType  := 'SmallChars07';
     FontColor := 2070783;
     ColorTol  := 5;
-    Text      := 'Insert';
-    TxtBounds := toBox(125, 304, 170, 327);
+    Text      := 'mode';
+    TxtBounds := toBox(85, 280, 200, 335);
   end;
   with Interfaces[PINSCREEN] do
   begin
@@ -65,7 +71,7 @@ begin
     FontColor := 2070783;
     ColorTol  := 5;
     Text      := 'Box';
-    TxtBounds := toBox(365, 33, 393, 48);
+    TxtBounds := toBox(356, 47, 383, 60);
   end;
   with Interfaces[SHOPSCREEN] do
   begin
@@ -75,6 +81,70 @@ begin
     Text      := 'shop';
     TxtBounds := toBox(145, 295, 175, 314);
   end;
+  with Interfaces[GEMAINSCREEN] do
+  begin
+    FontType  := 'UpChars07';
+    FontColor := 2070783;
+    ColorTol  := 5;
+    Text      := 'Grand';
+    TxtBounds := toBox(205, 28, 247, 45);
+  end;
+  with Interfaces[GEOFFERSCREEN] do
+  begin
+    FontType  := 'UpChars07';
+    FontColor := 2070783;
+    ColorTol  := 5;
+    Text      := 'offer';
+    TxtBounds := toBox(319, 30, 358, 46);
+  end;
+  with Interfaces[GECOLLECTSCREEN] do
+  begin
+    FontType  := 'UpChars07';
+    FontColor := 2070783;
+    ColorTol  := 5;
+    Text      := 'Collection';
+    TxtBounds := toBox(210, 73, 278, 89);
+  end;
+  with Interfaces[JEWELLERYSCREEN] do
+  begin
+    FontType  := 'UpChars07';
+    FontColor := 39423;
+    ColorTol  := 5;
+    Text      := 'Rings';
+    TxtBounds := toBox(40, 28, 150, 110);
+  end;
+  with Interfaces[TARGETSCREEN] do
+  begin
+    FontType  := 'UpChars07';
+    FontColor := 4500223;
+    ColorTol  := 5;
+    Text      := 'arget';
+    TxtBounds := toBox(225, 30, 310, 50);
+  end;
+  with Interfaces[TANNINGSCREEN] do
+  begin
+    FontType  := 'UpChars07';
+    FontColor := 2070783;
+    ColorTol  := 5;
+    Text      := 'hides';
+    TxtBounds := toBox(140, 30, 375, 50);
+  end;
+  with Interfaces[TRADESCREEN] do
+  begin
+    FontType  := 'UpChars07';
+    FontColor := 2070783;
+    ColorTol  := 5;
+    Text      := 'Trading';
+    TxtBounds := toBox(177, 28, 233, 45);
+  end;
+  with Interfaces[TRADECSCREEN] do
+  begin
+    FontType  := 'UpChars07';
+    FontColor := 65535;
+    ColorTol  := 5;
+    Text      := 'about';
+    TxtBounds := toBox(118, 70, 160, 85);
+  end;
 end;
 
 function TInterface.isVisible(): boolean;
@@ -82,11 +152,20 @@ begin
   result := findTextTPA(Self.FontColor, Self.ColorTol, Self.TxtBounds,Self.Text, Self.FontType, -1);
 end;
 
+function TInterface.waitVisible(WaitTime: Integer): boolean;
+var
+  T : Timer;
+begin
+  T.start();
+  while T.timeElapsed < WaitTime do
+    if Self.isVisible() then exit(true);
+end;
+
 function isInterfaceOpen(): Boolean;
 var
   i : Integer;
 begin
-  for i:=BANKSCREEN to TELEOTHERSCREEN do
+  for i:=0 to high(Interfaces) do
     if Interfaces[i].isVisible() then
       Exit(true);
   result := false;
@@ -112,8 +191,6 @@ var
 begin
   if menuOpen() then
   begin
-    ms := mouseSpeed;
-    mouseSpeed := 25;
     T.start();
     while (T.timeElapsed() < 3000) do
     begin
@@ -122,14 +199,13 @@ begin
       if not menuOpen() then
         break;
     end;
-    mouseSpeed := ms;
   end;
 
 // handles the advanced skill guide window
   tmpCol.create(2994428,20);
   if tmpCol.findIn(toBox(728,8,753,30), pnt) then
   begin
-    BrakeMMouse(pnt, 3, 3, False);
+    brakeMMouse(pnt, 3, 3, False);
     fastClick(MOUSE_LEFT);
     Exit(True);
   end;
@@ -186,7 +262,7 @@ begin
         if ((Pa.x2 - Pa.x1) > 50) or ((Pa.y2 - Pa.y1) > 50) then
           Continue;
 
-        if humanMMouseTxt(Pa.MidPoint(), round(Pa.Width()/2), round(Pa.Height()/2), ['lose','ack','Cl','se']) then
+        if humanMMouseTxt(Pa.midPoint(), round(Pa.Width()/2), round(Pa.Height()/2), ['lose','ack','Cl','se']) then
         begin
           fastClick(MOUSE_LEFT);
           Exit(True);

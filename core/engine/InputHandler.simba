@@ -7,15 +7,17 @@ InputHandler
 var
   MouseSpeed: Integer;
 
-function FindAndSetTarget(TitlePrefix: String; SetAsTarget: Boolean): Boolean; forward;
 procedure getRealMousePos(var X, Y : Integer);
 var
   KMTarget, ITarget: Integer;
 begin
   {$IFDEF SMART}
+    if not IsTargetValid() then Writeln('Target invalid');
     KMTarget := GetKeyMouseTarget;
     ITarget := GetImageTarget;
-    FindAndSetTarget('SMART', True);
+    if not findAndSetTarget('SMART', True) then
+      findAndSetTarget('Old', True);
+
     GetMousePos(X, Y);
     FreeTarget(GetImageTarget);
     SetKeyMouseTarget(KMTarget);
@@ -281,14 +283,15 @@ begin
     MoveMouse(Round(xe), Round(ye));
 end;
 
+function itemsInBank(): Boolean; forward;
 {*******************************************************************************
-Procedure windMouseDTM(xs, ys, xe, ye, gravity, wind, minWait, maxWait,
-          targetArea: extended; DTM: Integer)
+Function windMouseFunc(xs, ys, xe, ye, gravity, wind, minWait, maxWait,
+          targetArea: extended; Func: function: Boolean): Boolean;
 By: Flight
-Description: "Slowly" moves the mouse while searching for a DTM
-              on the main-screen.
+Description: "Slowly" moves the mouse until either the target coordinate is
+             reached or the condition 'Func' is met.
 *******************************************************************************}
-Function windMouseDTM(xs, ys, xe, ye, gravity, wind, minWait, maxWait, targetArea: extended; DTM: Integer): Boolean;
+Function windMouseFunc(xs, ys, xe, ye, gravity, wind, minWait, maxWait, targetArea: extended; Func: function: Boolean; Bank: Boolean = False): Boolean;
 var
   veloX,veloY,windX,windY,veloMag,dist,randomDist,lastDist,step: extended;
   lastX,lastY,MSP,W,maxStep,X,Y: integer;
@@ -296,6 +299,7 @@ var
   fX,fY,mX,mY: Integer;
   B: TBox;
 begin
+  if (Func()) then Exit(True);
   Result := False;
   MSP    := MouseSpeed;
   sqrt2  := sqrt(2);
@@ -338,20 +342,23 @@ begin
     if (lastX <> Round(xs)) or (lastY <> Round(ys)) then
       MoveMouse(Round(xs), Round(ys));
 
-    getMousePos(mX, mY);
-    B := toBox(mX-5, mY-5, mX+5, mY+5);
-
-// Search for the scroll bar near the mouse
-    if not cs_findColorTolerance(fX, fY, 3359309, 30, B, cs_CTS1) then
-      Exit(False);
-
-    if findDTM(DTM, X, Y, MSx1, MSy1, MSx2, MSy2) then
+    if (Func()) then
+    begin
+      MouseSpeed := MSP;
       Exit(True);
-
-    case Random(50) of
-      1..25: W := (MSP + (Random(Round(MSP/4))));
-      26..50: W := (MSP - (RandomRange(Round(MSP/2), MSP-1)));
     end;
+
+    if Bank then
+      if (not itemsInBank()) then
+      begin
+        MouseSpeed := MSP;
+        Exit(false);
+      end;
+
+    if RBool then
+      W := (MSP + (Random(Round(MSP/4))))
+    else
+      W := (MSP - (RandomRange(Round(MSP/2), MSP-1)));
 
     if (W < 1) then
       W := 1;
@@ -536,29 +543,11 @@ begin
   Y2 := RandomRange(Pnt.Y-(A*MP), Pnt.Y+(A*MP));
   shiftWindMouse(X, Y, X2, Y2, 11, 8, 10.0 / randSpeed, 12.0 / randSpeed, 10.0 * randSpeed, 10.0 * randSpeed);
   getMousePos(X, Y);
+  MouseSpeed := round(A*0.7);
+  if MouseSpeed < 7 then
+    MouseSpeed := 7;
   brakeMMouse(Pnt, ranX, ranY, True);
   MouseSpeed := A;
-end;
-
-{*******************************************************************************
-procedure humanRandomMouse;
-By: Flight
-Description: Slowly moves the mouse a short distance in a random direction.
-*******************************************************************************}
-Procedure humanRandomMouse;
-var
-  randSpeed : extended;
-  x,y,MS    : integer;
-begin
-  MS := mouseSpeed;
-
-  mouseSpeed := RandomRange(5, 10);
-  randSpeed  := (random(MouseSpeed) / 2.0 + MouseSpeed) / 10.0;
-  getMousePos(x, y);
-  humanWindMouse(x, y, RandomRange(x - 75, x + 75), RandomRange(y - 75, y + 75),
-          30, 55, 10.0 / randSpeed, 12.0 / randSpeed, 10.0 * randSpeed);
-
-  mouseSpeed := MS;
 end;
 
 {*******************************************************************************
@@ -574,7 +563,7 @@ begin
   getMousePos(x, y);
   holdMouse(x, y, button);
 
-  Wait(RandomRange(150, 210));
+  Wait(RandomRange(90, 160));
 
   getMousePos(x, y);
   releaseMouse(x, y, button);
@@ -604,34 +593,29 @@ Example:
 function didClick(Red: Boolean; Time: integer): boolean;
 var
   T : Timer;
-  x, y, w, h, R, G: integer;
-  B: TBox;
+  B : TBox;
+  colR,colG : TColEx;
 begin
-  getMousePos(x, y);
-  getClientDimensions(w, h);
-  B := IntToBox(x - 15, y - 15, x + 15, y + 15);
-  if B.x1 < 0 then B.x1 := 0;
-  if B.y1 < 0 then B.y1 := 0;
-  if B.x2 > w then B.x2 := w;
-  if B.y2 > h then B.y2 := h;
+  B := pointToBox(getMousePnt(), 15);
+  checkAreaBounds(B);
+  colR.create(255, 15);
+  colG.create(65535, 15);
   T.start();
   while (T.timeElapsed < Time) do
   begin
-    R := cs_CountColorTolerance(255, 15, B, cs_CTS1);
-    G := cs_CountColorTolerance(65535, 15, B, cs_CTS1);
     if Red then
     begin
-      if (G > 8) then
+      if (colG.count(B) > 8) then
         Exit;
-      Result := (R > 10);
+      if (colR.count(B) > 10) then
+        Exit(true);
     end else
     begin
-      if (R > 5) then
+      if (colR.count(B) > 5) then
         Exit;
-      Result := (G > 35);
+      if (colG.count(B) > 35) then
+        Exit(true);
     end;
-    if Result then
-      Exit;
   end;
 end;
 
@@ -704,7 +688,7 @@ begin
   getMousePos(pt.x,pt.y);
   PT := randomPointBoxEx(pt,inttobox(x1,y1,x2,y2),Dist);
   brakeMMouse(PT, 0, 0, True);
-  wait(randomRange(50,150));
+  wait(randomRange(100,150));
   fastClick(ClickType);
 end;
 
@@ -714,7 +698,7 @@ var
 begin
   gaussBox(Pnt.x, Pnt.y, B.X1, B.Y1, B.X2, B.Y2);
   brakeMMouse(Pnt, 0, 0, True);
-  wait(randomRange(50,150));
+  wait(randomRange(100,150));
   fastClick(ClickType);
 end;
 

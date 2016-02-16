@@ -35,16 +35,21 @@ const
   GBy1 = 301;
   GBx2 = 375;
   GBy2 = 341;
+// Cancel box
+  CBx1 = 392;
+  CBy1 = 301;
+  CBx2 = 530;
+  CBy2 = 341;
 // Click to play button
   WDx1 = 276;
   WDy1 = 298;
   WDx2 = 499;
   WDy2 = 381;
 // Logout box
-  LOx1 = 596;
-  LOy1 = 367;
-  LOx2 = 689;
-  LOy2 = 386;
+  LOx1 = 573;
+  LOy1 = 406;
+  LOx2 = 707;
+  LOy2 = 433;
 
   WHITE_TEXT    = 16777215; // white text color
   MESSAGE_BOX   = 11452366; // The "helpful message" box color
@@ -105,8 +110,13 @@ Var
   LS_WORLDSCREEN  = 3;
 
 function getLoginState(): Integer;
+var
+  tCol : TColEx;
 begin
   if (getColor(427,489) = 16777215) then
+    Exit(LS_LOGGEDIN);
+  tCol.create(12899548, 5);
+  if tCol.findIn(toBox(555,13,569,28)) then
     Exit(LS_LOGGEDIN);
   if (getColor(400,335) = 16777215) then
     Exit(LS_SPLASHSCREEN);
@@ -117,14 +127,10 @@ end;
 
 function connectionLost(): Boolean;
 var
-  Pnt   : TPoint;
-  c1,c2 : TColEx;
   X,Y   : Integer;
 begin
-  c1.create(0, 0);
-  c2.create(16777215, 10)
-  if (c1.findIn(toBox(0,0,230,35), Pnt) and c2.findIn(toBox(0,0,230,35), Pnt)) then
-    result := findText(X, Y, 'attem', 'SmallChars07', toBox(0,0,230,35));
+  result := (findText(X, Y, 'attem', 'SmallChars07', toBox(0,0,230,35)) or
+             findText(X, Y, 'lease', 'SmallChars07', toBox(0,0,230,35)));
 end;
 
 function isLoggedIn(): Boolean;
@@ -133,7 +139,6 @@ var
 begin
   if connectionLost() then
   begin
-    warn('Connection lost, please wait..', WT_CORE);
     T.start();
     while (connectionLost() and (T.timeElapsed() < 60000)) do
       wait(1);
@@ -199,16 +204,23 @@ begin
   terminateScript();
 end;
 
+function WS_enabled(): Boolean; forward;
+function WS_logout(): Boolean; forward;
 function logoutPlayer(): Boolean;
 var
   T : Timer;
+label
+  start;
 begin
   if not isLoggedIn() then
     exit(true);
 
+  start:
   if not gametab(TAB_LOGOUT) then
     exit(false);
 
+  if WS_enabled() then
+    if WS_logout() then exit(true);
   T.start();
   while (Me.inCombat() and (T.timeElapsed() < 5000)) do
     wait(1);
@@ -220,6 +232,14 @@ begin
     if (not isLoggedIn()) then
       exit(true);
   until(T.timeElapsed > 11000);
+
+  if isSplashScreen() then
+  begin
+    mouseBox(toBox(WDx1,WDy1,WDx2,WDy2), MOUSE_LEFT);
+    while not isLoggedIn() do
+      wait(60);
+    GoTo start;
+  end;
 end;
 
 var
@@ -236,15 +256,18 @@ var
   Box,uBox,pBox  : TBox;
   T              : Timer;
   p              : TPoint;
-  wTxtCol,lCol   : TColEx;
+  wTxtCol,lCol,
+  rCol          : TColEx;
   c,w,typtmp,uL,
   uH,pL,pH,uLen,
   pLen,i,j,
-  Attempts       : integer;
+  Attempts,rw    : integer;
   foundLogin,
   retryLogin,
   doSwitch       : boolean;
   TPA            : TPointArray;
+  MemWorlds,
+  FreeWorlds     : TIntegerArray;
   Actions        : TVariantArray;
 label
   EnterName,EnterGame,SplashScreen;
@@ -283,9 +306,40 @@ begin
     Wait(RandomRange(1000,2000));
   until (RSReady);
 
+  MemWorlds :=
+  [    320,343,369,+
+   302,321,344,370,+
+   303,322,345,373,+
+   304,    346,374,+
+   305,    349,375,+
+   306,327,350,376,+
+       328,351,377,+
+   309,329,354,378,+
+   310,330,358,    +
+   311,333,359,    +
+   312,334,360,    +
+   313,    361,    +
+   314,336,362,    +
+           365,386,+
+   317,338,366,    +
+   318,341,367,    +
+   319,342,368];
+
+   FreeWorlds :=
+  [301,308,316,335,381, +
+   382,383,384,385,393,394];
+
+  EnterName:
   if inIntArray(IgnoreWorlds, getCurrentWorldLS()) then
   begin
     warn('Ignore world detected, choosing another world', WT_CORE);
+    selectWorld(randomWorld(Me.Member));
+  end;
+
+  if not Me.Member then
+  if inIntArray(MemWorlds, getCurrentWorldLS()) then
+  begin
+    warn('Switching to a F2P world', WT_CORE);
     selectWorld(randomWorld(Me.Member));
   end;
 
@@ -304,11 +358,18 @@ begin
   if not wTxtCol.findAllIn(toBox(439,313,484,327), TPA) then
   begin
     mouseBox(toBox(EUX1,EUY1,EUX2,EUY2), MOUSE_LEFT);
+    rCol.create(clRed, 5);
     T.start();
     while (T.timeElapsed() < 60000) do
     begin
+      if rCol.findIn(toBox(405,220,430,240)) then
+      begin
+        mouseBox(toBox(236,306,367,337), MOUSE_LEFT);
+        wait(500 + random(500));
+      end;
+
       c := countColor(65535, 238, 215, 526, 230);
-      if c > 1 then
+      if ((c > 1) and (not rCol.findIn(toBox(405,220,430,240)))) then
       begin
         foundLogin := true;
         break;
@@ -325,7 +386,6 @@ begin
   uBox := toBox(UBX1, 247, UBX2, 257);
   pBox := toBox(UBX1, 262, UBX2, 275);
 
-  EnterName:
   for W:=0 to 1 do
   begin
     if W = 0 then
@@ -431,16 +491,19 @@ begin
       Actions :=       ['One minute has passed... Debug: ' + toStr(CountColor(LOGIN_STATUSCOLOUR, 224, 190, 532, 250)),              0,    5,    'Terminate']
     else
     case (CountColor(LOGIN_STATUSCOLOUR, 224, 190, 532, 250)) of
-                        // WriteLn Error                  Wait for   Retrys     Action
-      738:  Actions := ['Invalid Username / Password',           0,    0,    'Terminate'];
+                        // WriteLn Error                  Wait for   Retrys    Action
+      863 : Actions := ['Invalid Username / Password',           0,    0,    'Terminate'];
       1539: Actions := ['Your account has been disabled',        0,    0,    'Terminate'];
-      1073: Actions := ['Your account is already logged in',  5000,    5,    'Retry'];
+      1073: Actions := ['Your account is already logged in',  1700,    5,    'Retry'];
        492: Actions := ['Error Connecting.',                 20000,    10,   'Retry'];
-      1721: Actions := ['Too many incorrect logins.',    5 * 60000,    2,    'Retry'];
-       906: Actions := ['This world is full.',                5000,    2,    'Switch'];
+      1437: Actions := ['Too many incorrect logins.',    5 * 60000,    2,    'Switch'];
+       906: Actions := ['This world is full.',                2000,    3,    'Switch'];
+      1227: Actions := ['Login limit exceeded.',              5000,    5,    'Switch'];
+      1231: Actions := ['No reply from login server',         5000,    2,    'Switch'];
       1136: Actions := ['Runescape has been updated.',           0,    0,    'RSUpdate'];
-       777: Actions := ['Login limit exceeded.',                 0,    0,    ''];
-      1700: Actions := ['Members world',                         0,    0,    'Terminate'];
+       777: Actions := ['Login limit exceeded.',                 0,    2,    'Switch'];
+      1700: Actions := ['Members world',                         0,    2,    'Switch'];
+      774 : Actions := ['Login server offline',               1500,    10,   'Retry'];
     end;
                              {Respond}
 
@@ -456,7 +519,6 @@ begin
         begin
           RetryLogin := True;
           Wait(2000 + Random(1000));
-          Break;
         end else
           terminateScript();
       end;
@@ -495,6 +557,7 @@ begin
           end;
       end;
     end;
+    wait(randomRange(90,130));
   until(Result);
 
   SplashScreen:
@@ -511,10 +574,16 @@ begin
 {Back to main screen if needed}
   if doSwitch then
   begin
+    mouseBox(toBox(CBx1,CBy1,CBx2,CBy2), MOUSE_LEFT);
+    warn('Changing worlds; current world:'+toStr(getCurrentWorldLS()), WT_CORE);
+    repeat
+      rw := randomWorld(Me.Member);
+    until(not (rw = getCurrentWorldLS()));
+    selectWorld(rw);
+    warn('W'+toStr(rw)+' selected', WT_CORE);
     RetryLogin := False;
+    DoSwitch := False;
     Inc(Attempts);
-    TypeByte(vk_Escape);
-    selectWorld(randomWorld(Me.Member));
     goto EnterName;
   end;
 

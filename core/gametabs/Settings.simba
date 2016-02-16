@@ -47,6 +47,21 @@ end;
             - Display settings -
 }
 
+procedure setDefaultZoom(Lock: Boolean = false);
+var
+  col : TColEx;
+begin
+  openSettingsTab(1);
+  mouseBox(toBox(560,260,584,282), MOUSE_RIGHT);
+  chooseOption('Restore');
+  if Lock then
+  begin
+    col.create(200, 10);
+    if (not col.findIn(toBox(560,260,584,282))) then
+      mouseBox(toBox(560,260,584,282), MOUSE_LEFT);
+  end;
+end;
+
 function setBrightness(Brightness: Integer): Boolean;
 var
   Pnt    : TPoint;
@@ -61,7 +76,7 @@ begin
     exit(false);
   end else
   begin
-    PntArr := [Point(614, 287),Point(645, 287),Point(676, 287),Point(710, 287)];
+    PntArr := [Point(607, 304),Point(638, 304),Point(669, 304),Point(703, 304)];
     Pnt    := PntArr[(Brightness - 1)];
     if (not (getColor(Pnt.X, Pnt.Y) = 16777215)) then
     begin
@@ -72,7 +87,7 @@ begin
   end;
 end;
 
-function toggleDataOrbs(Enable: Boolean): Boolean;
+function setFixedClient(): Boolean;
 var
   tCol : TColEx;
 begin
@@ -81,73 +96,118 @@ begin
     Exit;
 
   tCol.create(1777019, 15);
+  if (tCol.count(toBox(573,327,632,377)) > 50) then
+    exit(true)
+  else
+  begin
+    mouseBox(toBox(573,327,632,377), MOUSE_LEFT);
+    exit(true);
+  end;
+end;
+
+function toggleDataOrbs(Enable: Boolean): Boolean;
+var
+  tCol : TColEx;
+  Pnt  : TPoint;
+begin
+  Result := False;
+  if not openSettingsTab(1) then
+    Exit;
+
+  if not waitFindColor(Pnt, 2070783, 5, toBox(255,85,265,95), 100) then
+  begin
+    mouseBox(toBox(577,385,693,410), MOUSE_LEFT);
+    waitFindColor(Pnt, 2070783, 5, toBox(255,85,265,95), 3500);
+  end;
+  tCol.create(1777019, 15);
   if Enable then
   begin
-    if (tCol.count(toBox(569,328,602,361)) > 50) then
+    if (tCol.count(toBox(334,113,370,149)) > 50) then
       exit(true)
     else
     begin
-      mouseBox(toBox(569,328,602,361), MOUSE_LEFT);
+      mouseBox(toBox(334,113,370,149), MOUSE_LEFT);
       exit(true);
     end;
   end else if not Enable then
-    if (tCol.count(toBox(569,328,602,361)) > 50) then
+    if (tCol.count(toBox(334,113,370,149)) > 50) then
     begin
-      mouseBox(toBox(569,328,602,361), MOUSE_LEFT);
+      mouseBox(toBox(334,113,370,149), MOUSE_LEFT);
       Result := True;
     end;
+
+  mouseBox(toBox(356,80,371,96), MOUSE_LEFT);
+  waitColorGone(2070783, 262, 88, 20, 3000);
 end;
 
 function toggleRoofRemoval(Enable: Boolean): Boolean;
 var
+  Pnt  : TPoint;
   tCol : TColEx;
 begin
   Result := False;
   if not openSettingsTab(1) then
     Exit;
 
+  if not waitFindColor(Pnt, 2070783, 5, toBox(255,85,265,95), 100) then
+  begin
+    mouseBox(toBox(577,377,693,394), MOUSE_LEFT);
+    waitFindColor(Pnt, 2070783, 5, toBox(255,85,265,95), 3500);
+  end;
   tCol.create(1777019, 15);
   if Enable then
   begin
-    if (tCol.count(toBox(624,328,659,361)) > 50) then
+    if (tCol.count(toBox(272,113,308,149)) > 50) then
       exit(true)
     else
     begin
-      mouseBox(toBox(624,328,659,361), MOUSE_LEFT);
+      mouseBox(toBox(272,113,308,149), MOUSE_LEFT);
       exit(true);
     end;
   end else if not Enable then
-    if (tCol.count(toBox(624,328,659,361)) > 50) then
+    if (tCol.count(toBox(272,113,308,149)) > 50) then
     begin
-      mouseBox(toBox(624,328,659,361), MOUSE_LEFT);
+      mouseBox(toBox(272,113,308,149), MOUSE_LEFT);
       Result := True;
     end;
+
+  mouseBox(toBox(356,80,371,96), MOUSE_LEFT);
+  waitColorGone(2070783, 262, 88, 20, 3000);
 end;
 
 function toggleRemainingXP(Enable: Boolean): Boolean;
 var
+  Pnt  : TPoint;
   tCol : TColEx;
 begin
   Result := False;
   if not openSettingsTab(1) then
     Exit;
 
+  if not waitFindColor(Pnt, 2070783, 5, toBox(255,85,265,95), 100) then
+  begin
+    mouseBox(toBox(577,377,693,394), MOUSE_LEFT);
+    waitFindColor(Pnt, 2070783, 5, toBox(255,85,265,95), 3500);
+  end;
   tCol.create(1777019, 15);
   if Enable then
   begin
-    if (tCol.count(toBox(682,328,717,361)) > 50) then
+    if (tCol.count(toBox(211,113,247,149)) > 50) then
       exit(true)
     else
     begin
-      mouseBox(toBox(682,328,717,361), MOUSE_LEFT);
+      mouseBox(toBox(211,113,247,149), MOUSE_LEFT);
       exit(true);
     end;
   end else if not Enable then
-    if (tCol.count(toBox(682,328,717,361)) > 50) then
+    if (tCol.count(toBox(211,113,247,149)) > 50) then
     begin
-      mouseBox(toBox(682,328,717,361), MOUSE_LEFT);
+      mouseBox(toBox(211,113,247,149), MOUSE_LEFT);
       Result := True;
     end;
+
+  mouseBox(toBox(356,80,371,96), MOUSE_LEFT);
+  waitColorGone(2070783, 262, 88, 20, 3000);
 end;
 
 {
@@ -345,17 +405,17 @@ begin
   tCol.create(1777019, 15);
   if Enable then
   begin
-    if (tCol.count(toBox(567,420,602,458)) > 50) then
+    if (tCol.count(toBox(555,428,591,462)) > 50) then
       exit(true)
     else
     begin
-      mouseBox(toBox(567,420,602,458), MOUSE_LEFT);
+      mouseBox(toBox(555,428,591,462), MOUSE_LEFT);
       exit(true);
     end;
   end else if not Enable then
-    if (tCol.count(toBox(567,420,602,458)) > 50) then
+    if (tCol.count(toBox(555,428,591,462)) > 50) then
     begin
-      mouseBox(toBox(567,420,602,458), MOUSE_LEFT);
+      mouseBox(toBox(555,428,591,462), MOUSE_LEFT);
       Result := True;
     end;
 end;
@@ -382,9 +442,9 @@ Example:
 *)
 procedure fixGraphics();
 begin
+  setDefaultZoom(true);
   if setBrightness(4) then Wait(90 + Random(200));
-  toggleDataOrbs(true);
-  toggleRoofRemoval(true);
+  setFixedClient();
   setAudioLevels(1, 1, 1);
   if toggleAcceptAid(False) then Wait(90 + Random(200));
   if setMouseButtons(2) then Wait(90 + Random(200));

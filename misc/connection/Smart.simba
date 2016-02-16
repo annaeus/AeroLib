@@ -7,12 +7,15 @@ type TSmart = record
   __Target, __PID: Integer;
   __Width, __Height: Integer;
   __ForceNew: Boolean;
+  __ShowConsole: Boolean;
   __Graphics: TGraphics;
   __UserAgent: String;
 end;
 
 var
   SMART_UserAgent : String = 'Mozilla/5.0 (Windows NT 6.1; WOW64; rv:33.0) Gecko/20100101 Firefox/33.0';
+  SMART_World : Integer;
+  SMART_ShowConsole : Boolean = False;
   OS_SMART : TSmart;
 
 Procedure TSmart.Create;
@@ -27,46 +30,56 @@ End;
 
 Procedure TSmart.Create(Width, Height: Integer; UserAgent: String; Plugins: TStringArray = []); overload;
 var
-  World: String;
+  World,path,C: String;
 Begin
   Self.__Width := Width;
   Self.__Height := Height;
   AddOnTerminate('__TSmartFreeAll');
 
-  If (Not Self.__ForceNew And Self.Pair()) then
+  if (Not Self.__ForceNew And Self.Pair()) then
     Exit;
 
   World := self.GetWorld();
-  If (World = '') then
+  if (World = '') then
   begin
-    Writeln('** Failed to grab world **');
-    Writeln('** Please check your internet connection/firewall **');
+    warn('Failed to grab world; please check your internet connection/firewall', WT_CORE);
     TerminateScript;
     Exit;
   end else
-    Writeln('Best world found: '+World);
+    warn('Best world found: '+World, WT_CORE);
 
-  Self.__Target := SmartSpawnClient('java.exe', replaceWrap(PluginPath, '\', '/', [rfReplaceAll]), 'http://oldschool' + World + '.runescape.com/', 'j1', Width, Height, '', UserAgent, '', '');
-  If (Self.__Target <> 0) Then
+  if SMART_ShowConsole then
+    Self.__Target := SmartSpawnClient('java.exe', replaceWrap(PluginPath, '\', '/', [rfReplaceAll]), 'http://oldschool' + World + '.runescape.com/', 'j1', Width, Height, '', UserAgent, '', '')
+  else
+    Self.__Target := SmartSpawnClient('javaw.exe', replaceWrap(PluginPath, '\', '/', [rfReplaceAll]), 'http://oldschool' + World + '.runescape.com/', 'j1', Width, Height, '', UserAgent, '', '');
+
+  if (Self.__Target = 0) then
+  begin
+    warn('Error while finding default Java, searching for Java...', WT_CORE);
+    path := getJavaPath(SMART_ShowConsole);
+    Self.__Target := SmartSpawnClient(path, replaceWrap(PluginPath, '\', '/', [rfReplaceAll]), 'http://oldschool' + World + '.runescape.com/', 'j1', Width, Height, '', UserAgent, '', '');
+  end;
+
+  if (Self.__Target <> 0) then
   begin
     try
       Self.__PID := SmartGetClientPID(Self.__Target);
       SetEIOSTarget('libsmartremote', ToStr(Self.__PID));
-      Writeln('Loading SMART: World ' + World);
+      warn('Loading SMART: World ' + World, WT_CORE);
       Self.__Graphics.Create(Width, Height, SmartDebugArray(Self.__Target));
       Insert(@Self, __Smart__Pointers);
       SmartSetDebug(Self.__Target, True);
     except
-      WriteLn('** Fatal Error: Pairing Clients; Terminating Script **');
+      warn('Fatal error pairing clients; terminating script', WT_CORE);
       SmartFreeClient(Self.__Target);
       TerminateScript;
     end;
   end else
-    begin
-      Writeln('** Smart Cannot Spawn Clients **');
-      TerminateScript;
-    end;
-End;
+  begin
+    warn('SMART cannot spawn client', WT_CORE);
+    TerminateScript;
+  end;
+end;
 
 Function TSmart.Pair: Boolean;
 var
@@ -87,7 +100,7 @@ Begin
       begin
         Self.__PID := Indices[I];
         SetEIOSTarget('libsmartremote', ToStr(Self.__PID));
-        Writeln('Paired with SMART[' + ToStr(Self.__PID) + ']');
+        warn('Paired with SMART[' + ToStr(Self.__PID) + ']', WT_CORE);
         try
           Self.__Graphics.Create(Self.__Width, Self.__Height, SmartDebugArray(Self.__Target));
         except
@@ -112,17 +125,25 @@ Begin
 End;
 
 Function TSmart.GetWorld: String;
+var
+  worlds : TIntegerArray;
 Begin
+  if SMART_World > 0 then
+    exit(toStr(SMART_World));
   Result := Between('a href="http://oldschool', '.runescape.com/j1', GetPage('http://oldschool.runescape.com/slu'));
   //check if the result is a vaild world
   if (length(result) > 0) then
     if (inRange(strToIntDef(extractFromStr(result, numbers), -1), 1, 78)) then
     begin
-      writeln('Found best world "' + result + '"');
+      warn('Found best world "' + result + '"', WT_CORE);
       exit;
     end;
   // else something failed, let's pick a random world
-  result := intToStr(randomRange(1, 78));
+  worlds := [1, 2, 3, 4, 5, 6, 8, 9, 10, 11, 12, 13, 14, 16, 17, 18, 19, 20, 21, 22, 25, 26,
+             27, 28, 29, 30, 33, 34, 35, 36, 37, 38, 41, 42, 43, 44, 45, 46, 49, 50, 51, 52,
+             53, 54, 57, 58, 59, 60, 61, 62, 65, 66, 67, 68, 69, 70, 73, 74, 75, 76, 77, 78,
+             81, 82, 83, 84, 93, 94];
+  result := intToStr(worlds[random(length(worlds))]);
 End;
 
 Function TSmart.GetPIDs(Paired: Boolean): TIntegerArray;
@@ -169,6 +190,11 @@ End;
 Function TSmart.UserAgent: String;
 Begin
   Result := Self.__UserAgent;
+End;
+
+Function TSmart.ShowConsole: Boolean;
+Begin
+  Result := Self.__ShowConsole;
 End;
 
 Procedure __TSmartFreeAll;

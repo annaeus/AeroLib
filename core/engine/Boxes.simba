@@ -4,9 +4,24 @@ Boxes
 =====
 }
 
+Function toBox(Xs, Ys, Xe, Ye: Integer): TBox;
+begin
+  Result := intToBox(Xs, Ys, Xe, Ye);
+end;
+
 Function pointToBox(Point: TPoint; Size: Integer): TBox; overload;
 begin
-  Result := intToBox(Point.X-Size, Point.Y-Size, Point.X+Size, Point.Y+Size);
+  Result := intToBox(Point.X-round(Size/2), Point.Y-round(Size/2), Point.X+round(Size/2), Point.Y+round(Size/2));
+end;
+
+function TBox.Width(): Integer;
+begin
+  Result := (Self.X2 - Self.X1 + 1);
+end;
+
+function TBox.Height(): Integer;
+begin
+  Result := (Self.Y2 - Self.Y1 + 1);
 end;
 
 Function TBox.MidPoint: TPoint;
@@ -181,13 +196,13 @@ end;
 
 procedure checkAreaBounds(var Area: TBox);
 begin
-  if Area.X1 < 0 then Area.X1 := 0;
-  if Area.Y1 < 0 then Area.Y1 := 0;
-  if Area.X2 > 764 then Area.X2 := 764;
-  if Area.Y2 > 502 then Area.Y2 := 502;
-
   Area.X1 := Min(Area.X1, Area.X2);
   Area.X2 := Max(Area.X1, Area.X2);
   Area.Y1 := Min(Area.Y1, Area.Y2);
   Area.Y2 := Max(Area.Y1, Area.Y2);
+
+  if Area.X1 < 0 then Area.X1 := 0;
+  if Area.Y1 < 0 then Area.Y1 := 0;
+  if Area.X2 > 764 then Area.X2 := 764;
+  if Area.Y2 > 502 then Area.Y2 := 502;
 end;

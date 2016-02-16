@@ -232,26 +232,8 @@ begin
 end;
 
 Function clickContinue(DoWait: Boolean): Boolean;
-var
-  B    : TBox;
-  T    : Timer;
-  pnt  : TPoint;
-  colA,
-  colB : TColEx;
-  i    : Integer;
-  TPA  : TPointArray;
 begin
-  colA.create(16711680, 30);
-  colB.create(16777215, 30);
-
-  if ((not colA.findAllIn(toBox(230,443,381,457), TPA)) and
-    (not colB.findAllIn(toBox(230,443,381,457), TPA)))  then
-    Exit(False);
-  if length(TPA) < 1 then Exit(False);
-
-  B := TPA.getBounds();
-  mouseBox(B, MOUSE_LEFT);
-  Result := True;
+  clickContinueEx(True);
 
   if DoWait then
     waitChatChange();
@@ -282,6 +264,45 @@ begin
   Result := clickContinue(False);
 end;
 
+// Continue chat via the space bar
+function continueChat(Wait: Boolean = True): Boolean;
+var
+  b                  : TBox;
+  pnt                : TPoint;
+  tmpCol             : TColEx;
+  Height,i,x,y       : Integer;
+  bTxt,wTxt,TextTPA,
+  SearchTPA,Matches  : TPointArray;
+  Search2D           : T2DPointArray;
+begin
+  Result := false;
+
+  // only 1 blue color in chat.
+  tmpCol.create(16711680, 10);
+  tmpCol.findAllIn(AREA_CB, bTxt);
+  tmpCol.create(16777215, 30);
+  tmpCol.findAllIn(AREA_CB, wTxt);
+
+  SearchTPA := combineTPA(bTxt, wTxt);
+  if length(SearchTPA) < 1 then
+    Exit(false);
+
+  Search2D := clusterTPAEx(SearchTPA, 20, 2);
+
+  // TO DO: figure out proper Text name (CharsNPC07).. then call will work.
+  TextTPA := loadTextTPA('here to conti', CharsNPC07, Height);
+
+  for i := 0 to High(Search2D) do
+    if findTextTPAinTPA(Height, TextTPA, Search2D[i], Matches) then
+    begin
+      TypeByte(vk_Space);
+      if Wait then
+        waitChatChange();
+      result := True;
+      Break;
+    end;
+end;
+
 (*
 GetTextCoords
 ~~~~~~~~~~
@@ -306,7 +327,7 @@ Example:
 function getTextCoords(textn: Integer): TPoint;
 begin
   Result.X := 15;
-  Result.Y := 347 + (14 * (textn - 1));
+  Result.Y := 346 + (14 * (textn - 1));
 end;
 
 (*
@@ -440,6 +461,16 @@ Example:
 function isChatBoxTextAnyLine(Text: string; TextCol: Integer): Boolean;
 begin
   Result := isChatBoxTextBetween(Text, TextCol, 1, 8);
+end;
+
+function isChatBoxTextAnyLineEx(Text: TStringArray; TextCol: Integer): Boolean;
+var
+  i : Integer;
+begin
+  result := false;
+  for i:=0 to high(Text) do
+    if isChatBoxTextBetween(Text[i], TextCol, 1, 8) then
+      Exit(true);
 end;
 
 (*
@@ -673,42 +704,52 @@ var
   B        : TBox;
   mPnt,pnt : TPoint;
   tmpCol,
-  bCol     : TColEx;
+  bCol,wCol: TColEx;
   i,x,y    : Integer;
   bPnts,
   wPnts    : TPointArray;
-  bAP,wAP  : T2DPointArray;
+  bAP,wAP,
+  tmpatpa  : T2DPointArray;
 begin
   tmpCol.create(6383633, 30);
   if not tmpCol.findIn(toBox(410,365,417,372), pnt) then
     Exit;
 
   bCol.create(0, 1);
-  tmpCol.create(16777215, 30);
-  bCol.findAllIn(toBox(MCX1,381,MCX2,MCY2), bPnts);
-  tmpCol.findAllIn(toBox(MCX1,381,MCX2,MCY2), wPnts);
+  wCol.create(16777215, 15);
+  bCol.findAllIn(toBox(MCX1,381,MCX2,470), bPnts);
+  wCol.findAllIn(toBox(MCX1,381,MCX2,470), wPnts);
 
   if ((length(bPnts) < 1) and (length(wPnts) < 1)) then Exit;
 
   bAP := clusterTPAEx(bPnts, 20, 2);
+  setArrayLength(Result, Length(bAP));
   wAP := clusterTPAEx(wPnts, 20, 2);
-  setArrayLength(Result, (Length(bAP)+Length(wAP)));
+  bPnts := [];
+  wPnts := [];
 
+  sortATPAFromFirstPointX(bAP, Point(0,0));
   for i:=0 to high(bAP) do
   begin
     B := bAP[i].getBounds();
-    sortATPAFromFirstPointX(bAP, Point(B.X1,B.CY));
-    Result[i].Bounds := B;
-    Result[i].Str    := getTextAtEx(B.x1, B.y1, B.x2, B.y2, 0, 5, 2, 0, 1, 'CharsNPC07');
+    bCol.findAllIn(B, bPnts);
+    tmpatpa := clusterTPAEx(bPnts, 1, 10);
+    sortATPAFromFirstPointX(tmpatpa, Point(0,0));
+    result[i].Bounds := B;
+    result[i].Str    := getTextATPA(tmpatpa, 5, 'CharsNPC07');
   end;
 
   if length(wAP) < 1 then Exit;
+  setArrayLength(Result, (Length(result)+Length(wAP)));
+  sortATPAFromFirstPointX(wAP, Point(0,0));
   for i:=0 to high(wAP) do
   begin
     B := wAP[i].getBounds();
-    sortATPAFromFirstPointX(wAP, Point(B.X1,B.CY));
-    Result[i].Bounds := B;
-    Result[i].Str    := getTextAtEx(B.x1, B.y1, B.x2, B.y2, 0, 5, 2, 16777215, 30, 'CharsNPC07');
+    wCol.findAllIn(B, wPnts);
+    tmpatpa := clusterTPAEx(wPnts, 1, 10);
+    sortATPAFromFirstPointX(tmpatpa, Point(0,0));
+    result[High(result)].Bounds := B;
+    result[High(result)].Str    := getTextATPA(tmpatpa, 5, 'CharsNPC07');
   end;
 end;
 
@@ -771,13 +812,13 @@ var
   pnt       : TPoint;
   colO,colB : TColEx;
 begin
-  colO.create(125, 5);
-  colB.create(7238703, 25);
+  colO.create(128, 10);
+  colB.create(6383633, 25);
 
-  if not colB.findIn(toBox(33,371,39,375), pnt) then
+  if not colB.findIn(toBox(MCX1,MCY1,MCX2,390), pnt) then
     Exit(False);
 
-  result := colO.findIn(toBox(90,363,430,377), pnt);
+  result := colO.findIn(toBox(MCX1,MCY1,MCX2,390), pnt);
 end;
 
 function findNPCChatTextMulti(txt: TStringArray; Click, DoWait: Boolean): boolean;
@@ -861,7 +902,7 @@ begin
           Exit(true);
       end;
     end;
-    if not clickContinue(true) then
+    if not continueChat() then
       exit;
     wait(100 + random(200));
     inc(t);
@@ -876,7 +917,7 @@ begin
   T.start();
   repeat
     findNPCChatTextMulti(resultText, True, True);
-    clickContinue(true);
+    continueChat();
     if not areTalking() then
       break;
   until(T.timeElapsed() > 8000);

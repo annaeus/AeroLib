@@ -213,6 +213,27 @@ begin
   until (Abs(GetTickCount - T) >= Time);
 end;
 
+{*******************************************************************************
+procedure humanRandomMouse;
+By: Flight
+Description: Slowly moves the mouse a short distance in a random direction.
+*******************************************************************************}
+Procedure humanRandomMouse();
+var
+  randSpeed : extended;
+  x,y,MS    : integer;
+begin
+  MS := mouseSpeed;
+
+  mouseSpeed := RandomRange(5, 10);
+  randSpeed  := (random(MouseSpeed) / 2.0 + MouseSpeed) / 10.0;
+  getMousePos(x, y);
+  humanWindMouse(x, y, RandomRange(x - 75, x + 75), RandomRange(y - 75, y + 75),
+          30, 55, 10.0 / randSpeed, 12.0 / randSpeed, 10.0 * randSpeed);
+
+  mouseSpeed := MS;
+end;
+
 (*
 randomMovement
 ~~~~~~~~~~~~~~
@@ -248,7 +269,6 @@ begin
 
  if (Random(2) = I) then
  begin
-   activateClient();
    Deg := getCompassAngle();
    Wait(100 + random(50));
    KeyDown(Keys[I]);
@@ -476,7 +496,7 @@ begin
 
   T := getCurrentTab();
   // every tab
-  AllTabs := RandomRange(21, 37);
+  AllTabs := RandomRange(21, 34);
   // more commanly used tabs
   TIA := [23, 25, 26, 30, 28];
 
@@ -656,9 +676,8 @@ var
 begin
   if findBlackChatMessage('just adva') then
   begin
-    clickContinue(True);
+    continueChat(RBool);
     Wait(RandomRange(125, 250));
-    clickContinue(True);
 
     if ClickSkill then
     begin
@@ -677,7 +696,7 @@ begin
     end;
 
     Result := True;
-    WriteLn(getDisplayName() + ' leveled up!');
+    warn(getDisplayName() + ' leveled up!', WT_CORE);
   end;
 end;
 

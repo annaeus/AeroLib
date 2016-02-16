@@ -6,11 +6,11 @@ Items
 
 
 type TItem = record
-    Name      : string;      // *
-    DTM       : integer;     // *
-    BMP       : integer;     // *
-    BMP_TOL   : integer;     // *
-    Wieldable : boolean;     // *
+    Name      : string;
+    DTM       : integer;
+    BMP       : integer;
+    BMP_TOL   : integer;
+    Wieldable : boolean;
 end;
 
 
@@ -43,11 +43,10 @@ function invBox(I : Integer): TBox;
 var
   Slot1, Slot6: TBox;
 begin
-  if not InRange(I, 1, 28) then
+  if not inRange(I, 1, 28) then
   begin
-    Result := toBox(-1,-1,-1,-1);
-    warn('Incorrect index: ' + IntToStr(i), WT_CORE);
-    Exit;
+    warn('Incorrect item index: ' + toStr(i), WT_CORE);
+    exit;
   end;
   Slot1 := toBox(563, 213, 594, 244);
   Slot6 := toBox(605, 249, 31415, 92653);
@@ -145,6 +144,11 @@ begin
   result := (getInvCount() > 27);
 end;
 
+function isInvEmpty(): Boolean;
+begin
+  result := (getInvCount() = 0);
+end;
+
 (*
 GetItemAmount
 ~~~~~~~~~~~~
@@ -228,10 +232,11 @@ var
 begin
   result := false;
   if (not itemInSlot(Slot)) then
-    if (not (action = MOUSE_MOVE)) then
+    if not variantIsInteger(action) then
       exit;
 
-  mouseBox(invBox(Slot), MOUSE_MOVE);
+  if (not mouseInBox(invBox(Slot))) then
+    mouseBox(invBox(Slot), MOUSE_MOVE);
   if variantIsInteger(action) then
   begin
     if (action = MOUSE_MOVE) then
@@ -289,6 +294,11 @@ var
   TB  : TBox;
 begin
   result := false;
+  if not inRange(Slot, 1, 28) then
+  begin
+    warn('Incorrect item index: ' + toStr(Slot), WT_CORE);
+    exit;
+  end;
   if not gameTab(TAB_INV) then
     exit;
   TB := invBox(Slot);
@@ -311,12 +321,39 @@ begin
   result := False;
   gameTab(TAB_INV);
   if DTMExists(self.DTM) then
-    result := cs_findDTM(self.DTM, x, y, Area, cs_CTS);
+    result := findDTM(self.DTM, x, y, Area.X1, Area.Y1, Area.X2, Area.Y2);
   if not result then
     if bitmapExists(self.BMP) then
-      result := cs_findBitmapToleranceIn(self.BMP, x, y, self.BMP_TOL, Area, cs_CTS);
+      result := findBitmapToleranceIn(self.BMP, x, y, Area.X1, Area.Y1, Area.X2, Area.Y2, self.BMP_TOL);
 
   fPnt := point(x, y);
+end;
+
+function TItem.inEquipment(): Boolean;
+var
+  x,y : Integer;
+begin
+  result := False;
+  gameTab(TAB_EQUIP);
+  if DTMExists(self.DTM) then
+    result := findDTM(self.DTM, x, y, AREA_INV.X1, AREA_INV.Y1, AREA_INV.X2, AREA_INV.Y2);
+  if not result then
+    if bitmapExists(self.BMP) then
+      result := findBitmapToleranceIn(self.BMP, x, y, AREA_INV.X1, AREA_INV.Y1, AREA_INV.X2, AREA_INV.Y2, self.BMP_TOL);
+end;
+
+function TItem.inInventory(): Boolean;
+var
+  Pnt : TPoint;
+begin
+  result := Self.findIn(AREA_INV, Pnt);
+end;
+
+function TItem.onMS(): Boolean;
+var
+  Pnt : TPoint;
+begin
+  result := Self.findIn(AREA_MS, Pnt);
 end;
 
 function isBankOpen(): Boolean; forward;
@@ -348,6 +385,16 @@ begin
   result := Self.getAmount(False);
 end;
 
+function TItem.getStoreAmount(): Integer;
+var
+  pnt : TPoint;
+begin
+  result := 0;
+
+  if Self.findIn([30,60,475,160], pnt) then
+    exit(getItemAmount(pnt));
+end;
+
 function TItem.getSlots(): TIntegerArray;
 var
   i,c : Integer;
@@ -362,4 +409,38 @@ begin
         setArrayLength(result, Length(result)+1);
         result[High(result)] := i;
       end;
+end;
+
+function TItem.getSlot(): Integer;
+var
+  slots : TIntegerArray;
+begin
+  result := 0;
+  slots  := Self.getSlots();
+  if length(slots) < 1 then Exit;
+  result := slots[0];
+end;
+
+function TItem.interact(action: Variant): Boolean;
+var
+  slot : Integer;
+begin
+  slot := Self.getSlot();
+  if slot < 1 then Exit(false);
+  result := interactSlot(slot, action);
+end;
+
+procedure waitInvStopChange(MaxTime: Integer);
+var
+  T        : Timer;
+  tmpCount : Integer;
+begin
+  tmpCount := getInvCount();
+  T.Start();
+  while (T.timeElapsed() < MaxTime) and (not isInvFull()) do
+    if (tmpCount <> getInvCount) then
+    begin
+      tmpCount := getInvCount();
+      T.Start();
+    end;
 end;
