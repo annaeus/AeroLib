@@ -515,7 +515,10 @@ begin
         wait(randomRange(800,1200)); // Simulate moving finger to starting position
         I := 0;
       end else
-       wait(randomRange(60,120));
+        wait(randomRange(60,120));
+      {Check if we scrolled all the way, infinite loop otherwise}
+      if CountColor(65536, 482, 276, 497, 277) = 32 then
+        Break;
     end;
 
   if scrollBar then
